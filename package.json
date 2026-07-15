@@ -1,0 +1,68 @@
+{
+  "name": "studiodata-lead-manager",
+  "version": "1.0.0",
+  "description": "Mini-CRM local pentru gestionarea lead-urilor StudioData.ro",
+  "main": "src/main/main.js",
+  "author": "StudioData.ro",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder --dir",
+    "dist:mac": "electron-builder --mac dmg zip",
+    "dist:arm64": "electron-builder --mac dmg zip --arm64",
+    "dist:x64": "electron-builder --mac dmg zip --x64",
+    "dist:universal": "electron-builder --mac universal dmg zip"
+  },
+  "dependencies": {
+    "nodemailer": "^9.0.3",
+    "sql.js": "^1.11.0"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "productName": "StudioData Lead Manager",
+    "appId": "ro.studiodata.leadmanager",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns",
+      "minimumSystemVersion": "10.15",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "afterPack": "scripts/fix-macos-plist.js",
+    "dmg": {
+      "title": "StudioData Lead Manager",
+      "artifactName": "StudioData Lead Manager-${version}-${arch}.${ext}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

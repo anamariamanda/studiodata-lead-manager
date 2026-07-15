@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ro">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioData Lead Manager</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SD</div>
+        <div>
+          <strong>StudioData</strong>
+          <span>Lead Manager</span>
+        </div>
+      </div>
+      <nav>
+        <button data-page="dashboard" class="active">⌘ Dashboard</button>
+        <button data-page="leads">☰ Lead-uri</button>
+        <button data-page="importContacts">⇩ Import contacte</button>
+        <button data-page="offers">▤ Oferte</button>
+        <button data-page="studioProfile">◆ Profil StudioData</button>
+        <button data-page="scraper">◎ Auditor website</button>
+        <button data-page="add">＋ Adaugă lead</button>
+        <button data-page="templates">✎ Șabloane</button>
+        <button data-page="followups">◷ Follow-up</button>
+        <button data-page="backup">⇅ Backup</button>
+        <button data-page="settings">⚙ Setări</button>
+        <button data-page="help">? Ajutor</button>
+      </nav>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">Dashboard</h1>
+          <p id="page-subtitle">Privire rapidă asupra lead-urilor și follow-up-urilor.</p>
+        </div>
+        <div class="top-actions">
+          <button class="secondary" id="refresh-btn">Reîncarcă</button>
+          <button class="primary" data-page-jump="add">Adaugă lead</button>
+        </div>
+      </header>
+      <section id="notice" class="notice hidden"></section>
+      <section id="app"></section>
+    </main>
+    <div id="toast" class="toast hidden"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
