@@ -44,7 +44,8 @@ function bindShell() {
 }
 
 async function showPage(page, payload, options = {}) {
-  if (!options.replace && currentPage && currentPage !== page) {
+  const nextRoute = routeKey(page, payload);
+  if (!options.replace && currentPage && routeKey(currentPage, currentPayload) !== nextRoute) {
     pageHistory.push({ page: currentPage, payload: currentPayload });
     pageHistory = pageHistory.slice(-20);
   }
@@ -94,6 +95,10 @@ function goBack() {
   const previous = pageHistory.pop();
   if (!previous) return;
   showPage(previous.page, previous.payload, { replace: true });
+}
+
+function routeKey(page, payload) {
+  return `${page}:${JSON.stringify(payload || {})}`;
 }
 
 function renderScraper() {
