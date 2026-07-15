@@ -19,6 +19,7 @@ let currentLead = null;
 let scraperResult = null;
 let googleImportLeads = [];
 let offerItems = [];
+let pageHistory = [];
 
 const $ = (selector) => document.querySelector(selector);
 const app = $('#app');
@@ -38,11 +39,18 @@ async function init() {
 function bindShell() {
   document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
   document.querySelectorAll('[data-page-jump]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.pageJump)));
-  $('#refresh-btn').addEventListener('click', () => showPage(currentPage));
+  $('#refresh-btn').addEventListener('click', () => showPage(currentPage, undefined, { replace: true }));
+  $('#back-btn').addEventListener('click', goBack);
 }
 
-async function showPage(page, payload) {
+async function showPage(page, payload, options = {}) {
+  if (!options.replace && currentPage && currentPage !== page) {
+    pageHistory.push({ page: currentPage, payload: currentPayload });
+    pageHistory = pageHistory.slice(-20);
+  }
   currentPage = page;
+  currentPayload = payload;
+  updateBackButton();
   document.querySelectorAll('nav button').forEach(button => button.classList.toggle('active', button.dataset.page === page));
   const titles = {
     dashboard: ['Dashboard', 'Privire rapidă asupra lead-urilor și follow-up-urilor.'],
@@ -72,6 +80,20 @@ async function showPage(page, payload) {
   if (page === 'backup') return renderBackup();
   if (page === 'settings') return renderSettings();
   return renderHelp();
+}
+
+let currentPayload = undefined;
+
+function updateBackButton() {
+  const button = $('#back-btn');
+  if (!button) return;
+  button.disabled = pageHistory.length === 0;
+}
+
+function goBack() {
+  const previous = pageHistory.pop();
+  if (!previous) return;
+  showPage(previous.page, previous.payload, { replace: true });
 }
 
 function renderScraper() {
