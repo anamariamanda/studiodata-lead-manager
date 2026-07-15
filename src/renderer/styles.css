@@ -88,22 +88,21 @@ button:active { transform: translateY(0); }
   height: 100vh;
 }
 .brand {
-  display: flex;
-  gap: 11px;
-  align-items: center;
+  display: grid;
+  gap: 7px;
+  align-items: start;
   margin-bottom: 24px;
   padding: 4px 5px 16px;
   border-bottom: 1px solid rgba(255,255,255,.1);
   color: var(--sidebar-text);
 }
-.brand-mark {
-  width: 44px; height: 44px; border-radius: 8px;
-  display: grid; place-items: center;
-  background: linear-gradient(135deg, #ffffff, #d8e5ff);
-  color: #172033; font-weight: 900;
-  letter-spacing: 0;
+.brand-logo {
+  width: 190px;
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
-.brand span { display: block; color: var(--sidebar-muted); font-size: 13px; margin-top: 2px; }
+.brand span { display: block; color: var(--sidebar-muted); font-size: 13px; margin-top: 0; }
 nav { display: grid; gap: 7px; }
 nav button {
   width: 100%;
@@ -337,6 +336,78 @@ details.panel[open] summary::after { content: "Închide"; }
 .lead-search-panel input {
   min-height: 42px;
   font-size: 15px;
+}
+.lead-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+.lead-card {
+  display: grid;
+  gap: 13px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.lead-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+.lead-title {
+  font-size: 16px;
+  font-weight: 800;
+  padding: 0;
+}
+.lead-card-head p {
+  margin: 5px 0 0;
+  font-size: 12px;
+}
+.lead-card-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.lead-card-body {
+  display: grid;
+  gap: 8px;
+  min-height: 88px;
+}
+.lead-card-info {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.lead-card-info span {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-2) 62%, var(--panel));
+}
+.lead-card-info button {
+  min-height: 29px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.lead-card-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 92px;
+  gap: 7px;
+  align-items: center;
+}
+.lead-card-actions button,
+.lead-card-actions .action-menu summary {
+  min-height: 32px;
+  padding: 7px 8px;
+  font-size: 12px;
+  text-align: center;
 }
 .lead-actions-cell {
   width: 318px;
@@ -602,6 +673,8 @@ tbody tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent
   .topbar { height: auto; align-items: flex-start; gap: 12px; flex-direction: column; }
   .cards, .two, .three, .four { grid-template-columns: 1fr; }
   .daily-actions { grid-template-columns: 1fr; }
+  .lead-card-grid { grid-template-columns: 1fr; }
+  .lead-card-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scraper-form { grid-template-columns: 1fr; }
   .offers-layout { grid-template-columns: 1fr; }
   .offer-item-row { grid-template-columns: 1fr 1fr; }

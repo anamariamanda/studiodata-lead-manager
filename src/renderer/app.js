@@ -467,13 +467,11 @@ async function renderLeads(filters = {}) {
       ${input('followupDate', 'Data follow-up', 'date')} ${select('sortBy', 'Sortare', ['created_at', 'company', 'status', 'priority', 'next_followup_date'])}
       <button id="apply-filters" class="primary">Aplică</button><button id="reset-filters">Resetează filtrele</button>
     </div>
-    <div class="table-wrap"><table><thead><tr>
-      <th>Firmă</th><th>Domeniu</th><th>Oraș</th><th>Contact</th><th>Telefon</th><th>Email</th><th>Website</th><th>Problemă</th><th>Status</th><th>Prioritate</th><th>Follow-up</th><th>Acțiuni</th>
-    </tr></thead><tbody id="leads-tbody">${filteredLeads(leads, filters.search).map(leadRow).join('') || '<tr><td colspan="12" class="empty">Nu există lead-uri.</td></tr>'}</tbody></table></div>`;
+    <div id="leads-list" class="lead-card-grid">${filteredLeads(leads, filters.search).map(leadCard).join('') || '<div class="empty">Nu există lead-uri.</div>'}</div>`;
   Object.entries(filters).forEach(([key, value]) => { const field = document.querySelector(`[name="${key}"]`); if (field) field.value = value; });
   $('#lead-search').oninput = event => {
     const visible = filteredLeads(leads, event.target.value);
-    $('#leads-tbody').innerHTML = visible.map(leadRow).join('') || '<tr><td colspan="12" class="empty">Nu există lead-uri pentru căutarea asta.</td></tr>';
+    $('#leads-list').innerHTML = visible.map(leadCard).join('') || '<div class="empty">Nu există lead-uri pentru căutarea asta.</div>';
     bindLeadTable();
   };
   $('#apply-filters').onclick = () => renderLeads({ ...Object.fromEntries(new FormData(document.querySelector('.filters')).entries()), search: $('#lead-search').value });
@@ -520,6 +518,57 @@ function leadRow(lead) {
         </details>
       </div>
     </td></tr>`;
+}
+
+function leadCard(lead) {
+  const followup = [lead.next_followup_date, lead.next_followup_time].filter(Boolean).join(' ');
+  const contactBits = [
+    lead.contact_person ? `Contact: ${lead.contact_person}` : '',
+    lead.phone ? `Tel: ${lead.phone}` : '',
+    lead.email ? `Email: ${lead.email}` : ''
+  ].filter(Boolean);
+  const meta = [lead.industry, lead.city, lead.source].filter(Boolean).join(' · ');
+  return `<article class="lead-card">
+    <header class="lead-card-head">
+      <div>
+        <button class="linklike lead-title" data-open-lead="${lead.id}">${esc(lead.company)}</button>
+        <p>${esc(meta || 'Fără context suplimentar')}</p>
+      </div>
+      <div class="lead-card-badges">${badge(lead.status, 'status')}${badge(lead.priority, 'priority')}</div>
+    </header>
+    <div class="lead-card-body">
+      <div class="lead-card-info">
+        ${contactBits.length ? contactBits.map(item => `<span>${esc(item)}</span>`).join('') : '<span>Nu avem încă date de contact.</span>'}
+      </div>
+      <div class="lead-card-info">
+        ${lead.website ? `<button data-url="${escAttr(lead.website)}">Website</button>` : '<span>Website lipsă</span>'}
+        ${lead.main_problem ? `<span>${esc(lead.main_problem)}</span>` : ''}
+        ${followup ? `<span>Follow-up: ${esc(followup)}</span>` : ''}
+      </div>
+    </div>
+    <footer class="lead-card-actions">
+      <button class="primary-chip" data-open-lead="${lead.id}">Deschide</button>
+      <button data-quick-action="${lead.id}:contacted">Contactat</button>
+      <button class="send-chip" data-quick-action="${lead.id}:direct-email">Trimite</button>
+      <button data-quick-action="${lead.id}:phone-email">Telefon</button>
+      <details class="action-menu">
+        <summary>Mai multe</summary>
+        <div class="action-menu-list">
+          <button data-quick-action="${lead.id}:edit">Editează</button>
+          <button data-quick-action="${lead.id}:follow">Follow-up</button>
+          <button data-quick-action="${lead.id}:copy-email">Copiază email</button>
+          <button data-quick-action="${lead.id}:copy-phone">Copiază telefon</button>
+          <button data-quick-action="${lead.id}:mail">Email pe Mac</button>
+          <button data-quick-action="${lead.id}:whatsapp">WhatsApp</button>
+          <button data-quick-action="${lead.id}:website">Website</button>
+          <button data-quick-action="${lead.id}:facebook">Facebook</button>
+          <button data-quick-action="${lead.id}:linkedin">LinkedIn</button>
+          <button data-quick-action="${lead.id}:duplicate">Duplică</button>
+          <button class="danger-text" data-quick-action="${lead.id}:delete">Șterge</button>
+        </div>
+      </details>
+    </footer>
+  </article>`;
 }
 
 async function renderLeadForm(id) {
@@ -982,6 +1031,7 @@ async function runLeadAction(id, action) {
 
 function bindLeadLinks() {
   document.querySelectorAll('[data-open-lead]').forEach(b => b.onclick = () => showPage('add', { id: Number(b.dataset.openLead) }));
+  document.querySelectorAll('[data-url]').forEach(b => b.onclick = () => api.openExternal(b.dataset.url || ''));
 }
 
 async function markContacted(id) {
@@ -1227,8 +1277,25 @@ async function renderPrintableLead(id, analysisOnly) {
 async function renderPrintableOffer(id, previewOnly = false) {
   const offer = await api.getOffer(id);
   if (!offer) return;
-  const subtotal = (offer.items || []).reduce((sum, item) => sum + Number(item.quantity || 1) * Number(item.price || 0), 0);
+  const offerItems = offer.items || [];
+  const subtotal = offerItems.reduce((sum, item) => sum + Number(item.quantity || 1) * Number(item.price || 0), 0);
   const settings = await api.getSettings();
+  const itemRows = offerItems.map(item => {
+    const quantity = Number(item.quantity || 1);
+    const price = Number(item.price || 0);
+    return `<tr><td>${esc(item.description)}</td><td>${quantity}</td><td>${formatMoney(price)}</td><td>${formatMoney(quantity * price)}</td></tr>`;
+  }).join('');
+  const discountRows = Number(offer.discount) > 0
+    ? `<div><span>Subtotal</span><strong>${formatMoney(subtotal)}</strong></div><div><span>Reducere</span><strong>-${formatMoney(offer.discount)}</strong></div>`
+    : '';
+  const paymentItems = String(offer.payment_terms || '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => `<li>${esc(line)}</li>`)
+    .join('');
+  const contactLine = [settings.ownEmail, settings.ownPhone, settings.ownWebsite].filter(Boolean).map(esc).join(' · ');
+  const backButton = previewOnly ? '<button class="preview-back no-print" id="back-to-offer">Înapoi la editor</button>' : '';
   app.innerHTML = `<div class="offer-document">
     <header class="offer-document-header">
       <img src="./assets/studiodata-logo.svg" alt="StudioData">
@@ -1241,14 +1308,14 @@ async function renderPrintableOffer(id, previewOnly = false) {
       </section>
       <div class="offer-accent"></div>
       <section><span class="offer-kicker">PROIECT</span><h2>${esc(offer.title)}</h2><p class="offer-objective">${esc(offer.objective)}</p></section>
-      <section><span class="offer-kicker">SERVICII INCLUSE</span><table class="offer-document-table"><thead><tr><th>Descriere</th><th>Cant.</th><th>Preț</th><th>Valoare</th></tr></thead><tbody>${offer.items.map(item => `<tr><td>${esc(item.description)}</td><td>${item.quantity}</td><td>${formatMoney(item.price)}</td><td>${formatMoney(item.quantity * item.price)}</td></tr>`).join('')}</tbody></table>
-        <div class="offer-document-total">${Number(offer.discount) > 0 ? `<div><span>Subtotal</span><strong>${formatMoney(subtotal)}</strong></div><div><span>Reducere</span><strong>-${formatMoney(offer.discount)}</strong></div>` : ''}<div class="grand-total"><span>Total ofertă</span><strong>${formatMoney(offerTotal(offer))}</strong></div></div>
+      <section><span class="offer-kicker">SERVICII INCLUSE</span><table class="offer-document-table"><thead><tr><th>Descriere</th><th>Cant.</th><th>Preț</th><th>Valoare</th></tr></thead><tbody>${itemRows}</tbody></table>
+        <div class="offer-document-total">${discountRows}<div class="grand-total"><span>Total ofertă</span><strong>${formatMoney(offerTotal(offer))}</strong></div></div>
       </section>
-      <section class="offer-document-columns"><div><span class="offer-kicker">TERMEN ESTIMAT</span><p>${nl2br(offer.delivery_term)}</p></div><div><span class="offer-kicker">MODALITATE DE PLATĂ</span><ul>${String(offer.payment_terms || '').split('\n').filter(Boolean).map(line => `<li>${esc(line)}</li>`).join('')}</ul></div></section>
+      <section class="offer-document-columns"><div><span class="offer-kicker">TERMEN ESTIMAT</span><p>${nl2br(offer.delivery_term)}</p></div><div><span class="offer-kicker">MODALITATE DE PLATĂ</span><ul>${paymentItems}</ul></div></section>
       <section class="offer-conditions"><span class="offer-kicker">CONDIȚII DE COLABORARE</span><div>${nl2br(offer.conditions)}</div></section>
     </div>
-    <footer class="offer-document-footer"><div><strong>StudioData.ro</strong><span>Website-uri moderne. Design. Performanță.</span></div><div>${esc(settings.ownEmail || '')}${settings.ownPhone ? ` · ${esc(settings.ownPhone)}` : ''}${settings.ownWebsite ? ` · ${esc(settings.ownWebsite)}` : ''}</div></footer>
-  </div>${previewOnly ? '<button class="preview-back no-print" id="back-to-offer">Înapoi la editor</button>' : ''}`;
+    <footer class="offer-document-footer"><div><strong>StudioData.ro</strong><span>Website-uri moderne. Design. Performanță.</span></div><div>${contactLine}</div></footer>
+  </div>${backButton}`;
   $('#back-to-offer')?.addEventListener('click', () => showPage('offers', { id }));
 }
 
