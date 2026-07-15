@@ -453,30 +453,46 @@ function activityPanel(title, rows) {
 
 async function renderLeads(filters = {}) {
   const leads = await api.listLeads(filters);
+  const visibleLeads = filteredLeads(leads, filters.search);
   setNotice('');
   app.innerHTML = `
     <section class="lead-search-panel">
-      <label>Caută rapid în lead-uri
-        <input id="lead-search" value="${escAttr(filters.search || '')}" placeholder="Firmă, contact, email, telefon, oraș sau website">
+      <div>
+        <span class="eyebrow">Căutare rapidă</span>
+        <h2>Găsește un lead fără să sapi prin listă</h2>
+        <p>Poți căuta după firmă, contact, email, telefon, oraș, website sau problemă.</p>
+      </div>
+      <label>
+        <input id="lead-search" value="${escAttr(filters.search || '')}" placeholder="Scrie aici ce cauți">
       </label>
+      <strong id="lead-result-count">${leadCountLabel(visibleLeads.length, leads.length)}</strong>
     </section>
-    <div class="filters">
-      ${input('company', 'Firmă')} ${input('contactPerson', 'Contact')} ${input('email', 'Email')} ${input('phone', 'Telefon')}
-      ${input('city', 'Oraș')} ${input('county', 'Județ')} ${input('industry', 'Domeniu')}
-      ${select('status', 'Status', ['', ...STATUSES])} ${select('priority', 'Prioritate', ['', ...PRIORITIES])} ${select('source', 'Sursă', ['', ...SOURCES])}
-      ${input('followupDate', 'Data follow-up', 'date')} ${select('sortBy', 'Sortare', ['created_at', 'company', 'status', 'priority', 'next_followup_date'])}
-      <button id="apply-filters" class="primary">Aplică</button><button id="reset-filters">Resetează filtrele</button>
-    </div>
-    <div id="leads-list" class="lead-card-grid">${filteredLeads(leads, filters.search).map(leadCard).join('') || '<div class="empty">Nu există lead-uri.</div>'}</div>`;
+    <details class="panel lead-filter-panel">
+      <summary>Filtre avansate</summary>
+      <div class="filters details-content">
+        ${input('company', 'Firmă')} ${input('contactPerson', 'Contact')} ${input('email', 'Email')} ${input('phone', 'Telefon')}
+        ${input('city', 'Oraș')} ${input('county', 'Județ')} ${input('industry', 'Domeniu')}
+        ${select('status', 'Status', ['', ...STATUSES])} ${select('priority', 'Prioritate', ['', ...PRIORITIES])} ${select('source', 'Sursă', ['', ...SOURCES])}
+        ${input('followupDate', 'Data follow-up', 'date')} ${select('sortBy', 'Sortare', ['created_at', 'company', 'status', 'priority', 'next_followup_date'])}
+        <button id="apply-filters" class="primary">Aplică</button><button id="reset-filters">Resetează filtrele</button>
+      </div>
+    </details>
+    <div id="leads-list" class="lead-card-grid">${visibleLeads.map(leadCard).join('') || '<div class="empty">Nu există lead-uri.</div>'}</div>`;
   Object.entries(filters).forEach(([key, value]) => { const field = document.querySelector(`[name="${key}"]`); if (field) field.value = value; });
   $('#lead-search').oninput = event => {
     const visible = filteredLeads(leads, event.target.value);
     $('#leads-list').innerHTML = visible.map(leadCard).join('') || '<div class="empty">Nu există lead-uri pentru căutarea asta.</div>';
+    $('#lead-result-count').textContent = leadCountLabel(visible.length, leads.length);
     bindLeadTable();
   };
   $('#apply-filters').onclick = () => renderLeads({ ...Object.fromEntries(new FormData(document.querySelector('.filters')).entries()), search: $('#lead-search').value });
   $('#reset-filters').onclick = () => renderLeads({});
   bindLeadTable();
+}
+
+function leadCountLabel(visible, total) {
+  if (visible === total) return `${total} lead-uri`;
+  return `${visible} din ${total} lead-uri`;
 }
 
 function filteredLeads(leads, search = '') {
@@ -522,13 +538,14 @@ function leadRow(lead) {
 
 function leadCard(lead) {
   const followup = [lead.next_followup_date, lead.next_followup_time].filter(Boolean).join(' ');
-  const contactBits = [
-    lead.contact_person ? `Contact: ${lead.contact_person}` : '',
-    lead.phone ? `Tel: ${lead.phone}` : '',
-    lead.email ? `Email: ${lead.email}` : ''
-  ].filter(Boolean);
   const meta = [lead.industry, lead.city, lead.source].filter(Boolean).join(' · ');
-  return `<article class="lead-card">
+  const missing = [
+    !lead.phone ? 'telefon' : '',
+    !lead.email ? 'email' : '',
+    !lead.website ? 'website' : ''
+  ].filter(Boolean);
+  const nextStep = followup ? `Follow-up: ${followup}` : lead.status === 'Nou' ? 'De contactat' : 'Fără follow-up stabilit';
+  return `<article class="lead-card ${missing.length ? 'needs-data' : ''}">
     <header class="lead-card-head">
       <div>
         <button class="linklike lead-title" data-open-lead="${lead.id}">${esc(lead.company)}</button>
@@ -536,14 +553,17 @@ function leadCard(lead) {
       </div>
       <div class="lead-card-badges">${badge(lead.status, 'status')}${badge(lead.priority, 'priority')}</div>
     </header>
+    <div class="lead-next-step">${esc(nextStep)}</div>
     <div class="lead-card-body">
-      <div class="lead-card-info">
-        ${contactBits.length ? contactBits.map(item => `<span>${esc(item)}</span>`).join('') : '<span>Nu avem încă date de contact.</span>'}
+      <div class="lead-contact-grid">
+        <span><small>Contact</small>${esc(lead.contact_person || 'Nespecificat')}</span>
+        <span><small>Telefon</small>${esc(lead.phone || 'Lipsește')}</span>
+        <span><small>Email</small>${esc(lead.email || 'Lipsește')}</span>
       </div>
+      ${lead.main_problem ? `<p class="lead-problem">${esc(lead.main_problem)}</p>` : ''}
       <div class="lead-card-info">
-        ${lead.website ? `<button data-url="${escAttr(lead.website)}">Website</button>` : '<span>Website lipsă</span>'}
-        ${lead.main_problem ? `<span>${esc(lead.main_problem)}</span>` : ''}
-        ${followup ? `<span>Follow-up: ${esc(followup)}</span>` : ''}
+        ${lead.website ? `<button data-url="${escAttr(lead.website)}">Deschide website</button>` : '<span>Website lipsă</span>'}
+        ${missing.length ? `<span>Lipsesc: ${esc(missing.join(', '))}</span>` : '<span>Date de contact complete</span>'}
       </div>
     </div>
     <footer class="lead-card-actions">
@@ -573,6 +593,7 @@ function leadCard(lead) {
 
 async function renderLeadForm(id) {
   const lead = id ? await api.getLead(id) : blankLead();
+  const formSummary = leadFormSummary(lead);
   currentLead = lead;
   app.innerHTML = `
     <div class="lead-editor grid">
@@ -588,10 +609,13 @@ async function renderLeadForm(id) {
             <button class="primary" type="submit">Salvează lead</button>
           </div>
         </div>
+        <div class="lead-form-overview">
+          ${formSummary.map(item => `<span class="${item.ok ? 'is-ok' : 'needs-work'}"><strong>${esc(item.label)}</strong><small>${esc(item.text)}</small></span>`).join('')}
+        </div>
         <div class="lead-form-section">
           <h3>Date esențiale</h3>
           <p class="muted">Firma și măcar o metodă de contact sunt suficiente pentru început.</p>
-          <div class="grid three">${essentialLeadFields(lead)}</div>
+          ${essentialLeadFields(lead)}
         </div>
         <div class="lead-form-section">
           <h3>Următorul pas</h3>
@@ -623,13 +647,21 @@ async function renderLeadForm(id) {
   $('#export-analysis')?.addEventListener('click', () => api.exportAnalysisPdf(id));
 }
 
+function leadFormSummary(lead) {
+  const hasContact = Boolean(lead.email || lead.phone);
+  return [
+    { label: hasContact ? 'Contactabil' : 'Contact lipsă', text: hasContact ? 'Avem email sau telefon.' : 'Adaugă email sau telefon.', ok: hasContact },
+    { label: lead.website ? 'Website salvat' : 'Fără website', text: lead.website ? 'Poate fi auditat rapid.' : 'Adaugă website când îl găsești.', ok: Boolean(lead.website) },
+    { label: lead.next_followup_date ? 'Follow-up setat' : 'Fără follow-up', text: lead.next_followup_date ? `${lead.next_followup_date}${lead.next_followup_time ? `, ${lead.next_followup_time}` : ''}` : 'Alege o dată pentru următorul pas.', ok: Boolean(lead.next_followup_date) }
+  ];
+}
+
 function essentialLeadFields(lead) {
   const fields = [
     ['company', 'Firma*'], ['contact_person', 'Persoană de contact'], ['phone', 'Telefon'],
-    ['email', 'Email', 'email'], ['website', 'Website'], ['city', 'Oraș'],
-    ['notes', 'Observații simple', 'textarea']
+    ['email', 'Email', 'email'], ['website', 'Website'], ['city', 'Oraș']
   ];
-  return fields.map(([name, label, type = 'text', options]) => field(name, label, lead[name], type, options)).join('');
+  return `<div class="grid three">${fields.map(([name, label, type = 'text', options]) => field(name, label, lead[name], type, options)).join('')}</div>${field('notes', 'Observații simple', lead.notes, 'textarea')}`;
 }
 
 function nextStepLeadFields(lead) {
