@@ -584,7 +584,7 @@ function leadCard(lead) {
     !lead.email ? 'email' : '',
     !lead.website ? 'website' : ''
   ].filter(Boolean);
-  const nextStep = followup ? `Follow-up: ${followup}` : lead.status === 'Nou' ? 'De contactat' : 'Fără follow-up stabilit';
+  const nextStep = leadNextStepText(lead, followup);
   return `<article class="lead-card ${missing.length ? 'needs-data' : ''}">
     <header class="lead-card-head">
       <div>
@@ -629,6 +629,17 @@ function leadCard(lead) {
       </details>
     </footer>
   </article>`;
+}
+
+function leadNextStepText(lead, followup = '') {
+  if (lead.status === 'Contactat') {
+    const sentDate = lead.last_contact_date ? ` pe ${formatShortDate(lead.last_contact_date)}` : '';
+    const followupText = lead.next_followup_date ? ` · follow-up pe ${formatShortDate(lead.next_followup_date)}` : '';
+    return `Email trimis${sentDate}${followupText}`;
+  }
+  if (followup) return `Follow-up: ${followup}`;
+  if (lead.status === 'Nou') return 'De contactat';
+  return 'Fără follow-up stabilit';
 }
 
 async function renderLeadForm(id) {
@@ -1415,6 +1426,7 @@ async function renderPrintableOffer(id, previewOnly = false) {
 }
 
 function formatRoDate(value) { if (!value) return ''; return new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(`${value}T12:00:00`)); }
+function formatShortDate(value) { if (!value) return ''; return new Intl.DateTimeFormat('ro-RO', { day: '2-digit', month: '2-digit' }).format(new Date(`${value}T12:00:00`)); }
 function nl2br(value) { return esc(value || '').replace(/\n/g, '<br>'); }
 
 function setNotice(text) { $('#notice').textContent = text; $('#notice').classList.toggle('hidden', !text); }
