@@ -1015,6 +1015,7 @@ async function renderSettings() {
     ${field('fromName', 'Nume expeditor', emailSettings.fromName)}
     ${field('fromEmail', 'Email expeditor vizibil', emailSettings.fromEmail || 'contact@studiodata.ro', 'email')}
     ${field('user', 'Utilizator SMTP', emailSettings.user || 'smtp@studiodata.ro')}
+    ${field('bcc', 'Copie automată BCC', emailSettings.bcc || 'contact@studiodata.ro', 'email')}
     ${field('host', 'Server SMTP', emailSettings.host)}
     ${field('port', 'Port', emailSettings.port || '465')}
     ${field('secure', 'Conexiune sigură', emailSettings.secure || 'true', 'select', ['true', 'false'])}

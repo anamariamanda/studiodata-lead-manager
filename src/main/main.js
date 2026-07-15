@@ -56,6 +56,7 @@ function getEmailSettings() {
     port: settings.emailPort || '465',
     secure: settings.emailSecure || 'true',
     user: settings.emailUser || 'smtp@studiodata.ro',
+    bcc: settings.emailBcc || settings.ownEmail || settings.emailFromEmail || 'contact@studiodata.ro',
     hasPassword: Boolean(settings.emailPasswordEncrypted)
   };
 }
@@ -67,7 +68,8 @@ function saveEmailSettings(input = {}) {
     emailHost: String(input.host || '').trim(),
     emailPort: String(input.port || '465').trim(),
     emailSecure: String(input.secure ?? 'true'),
-    emailUser: String(input.user || input.fromEmail || 'smtp@studiodata.ro').trim()
+    emailUser: String(input.user || input.fromEmail || 'smtp@studiodata.ro').trim(),
+    emailBcc: String(input.bcc || '').trim()
   };
   const password = String(input.password || '');
   if (password) {
@@ -100,11 +102,13 @@ async function sendDirectEmail(message = {}) {
   const replyTo = String(settings.ownEmail || settings.emailReplyTo || 'contact@studiodata.ro').trim();
   const fromEmail = String(settings.emailFromEmail || 'contact@studiodata.ro').trim();
   const smtpUser = String(settings.emailUser || fromEmail).trim();
+  const bcc = String(settings.emailBcc || settings.ownEmail || fromEmail).trim();
   const signatureAttachment = emailSignatureAttachment();
   const info = await transporter.sendMail({
     from: `"${settings.emailFromName || 'StudioData.ro'}" <${fromEmail}>`,
     sender: smtpUser && smtpUser.toLowerCase() !== fromEmail.toLowerCase() ? smtpUser : undefined,
     to,
+    bcc: bcc && bcc.toLowerCase() !== to.toLowerCase() ? bcc : undefined,
     subject: String(message.subject || 'Mesaj StudioData'),
     text: textWithSignature(String(message.body || ''), settings),
     html: textToEmailHtml(String(message.body || ''), settings, signatureAttachment ? signatureAttachment.cid : ''),
