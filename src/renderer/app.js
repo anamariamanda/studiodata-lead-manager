@@ -1270,6 +1270,7 @@ async function showDirectEmail(lead = {}) {
     const subject = $('#direct-email-subject').value.trim();
     if (!recipient || !recipient.includes('@')) return showErrorModal('Verifică destinatarul', 'Completează o adresă de email validă înainte de trimitere.');
     if (!subject) return showErrorModal('Verifică subiectul', 'Completează subiectul emailului înainte de trimitere.');
+    if (lead.status === 'Contactat' && !confirm('Acest lead este deja marcat ca fiind contactat. Trimiți încă un email?')) return;
     button.disabled = true;
     button.textContent = 'Se trimite...';
     try {
