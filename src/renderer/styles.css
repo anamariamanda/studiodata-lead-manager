@@ -391,6 +391,27 @@ details.panel[open] summary::after { content: "Închide"; }
 .lead-filter-panel .filters {
   align-items: end;
 }
+.lead-view-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--panel-2) 62%, var(--panel));
+}
+.lead-view-tabs button {
+  min-height: 34px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.lead-view-tabs button.active {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--accent);
+  box-shadow: 0 6px 15px rgba(16, 24, 40, .08);
+}
 .lead-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));

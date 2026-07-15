@@ -481,6 +481,7 @@ function activityPanel(title, rows) {
 async function renderLeads(filters = {}) {
   const leads = await api.listLeads(filters);
   const visibleLeads = filteredLeads(leads, filters.search);
+  const readyOnly = filters.view === 'ready';
   setNotice('');
   app.innerHTML = `
     <section class="lead-search-panel">
@@ -493,6 +494,10 @@ async function renderLeads(filters = {}) {
         <input id="lead-search" value="${escAttr(filters.search || '')}" placeholder="Scrie aici ce cauți">
       </label>
       <strong id="lead-result-count">${leadCountLabel(visibleLeads.length, leads.length)}</strong>
+    </section>
+    <section class="lead-view-tabs">
+      <button class="${readyOnly ? '' : 'active'}" id="show-all-leads">Toate lead-urile</button>
+      <button class="${readyOnly ? 'active' : ''}" id="show-ready-leads">Gata de trimis</button>
     </section>
     <details class="panel lead-filter-panel">
       <summary>Filtre avansate</summary>
@@ -507,12 +512,14 @@ async function renderLeads(filters = {}) {
     <div id="leads-list" class="lead-card-grid">${visibleLeads.map(leadCard).join('') || '<div class="empty">Nu există lead-uri.</div>'}</div>`;
   Object.entries(filters).forEach(([key, value]) => { const field = document.querySelector(`[name="${key}"]`); if (field) field.value = value; });
   $('#lead-search').oninput = event => {
-    const visible = filteredLeads(leads, event.target.value);
+    const visible = filteredLeads(leads, event.target.value, filters.view);
     $('#leads-list').innerHTML = visible.map(leadCard).join('') || '<div class="empty">Nu există lead-uri pentru căutarea asta.</div>';
     $('#lead-result-count').textContent = leadCountLabel(visible.length, leads.length);
     bindLeadTable();
   };
-  $('#apply-filters').onclick = () => renderLeads({ ...Object.fromEntries(new FormData(document.querySelector('.filters')).entries()), search: $('#lead-search').value });
+  $('#show-all-leads').onclick = () => renderLeads({ ...filters, view: '', search: $('#lead-search').value });
+  $('#show-ready-leads').onclick = () => renderLeads({ ...filters, view: 'ready', search: $('#lead-search').value });
+  $('#apply-filters').onclick = () => renderLeads({ ...Object.fromEntries(new FormData(document.querySelector('.filters')).entries()), view: filters.view, search: $('#lead-search').value });
   $('#reset-filters').onclick = () => renderLeads({});
   bindLeadTable();
 }
@@ -522,13 +529,19 @@ function leadCountLabel(visible, total) {
   return `${visible} din ${total} lead-uri`;
 }
 
-function filteredLeads(leads, search = '') {
+function filteredLeads(leads, search = '', view = '') {
   const needle = String(search || '').trim().toLowerCase();
-  if (!needle) return leads;
-  return leads.filter(lead => [
+  const base = view === 'ready' ? leads.filter(isReadyToSendLead) : leads;
+  if (!needle) return base;
+  return base.filter(lead => [
     lead.company, lead.contact_person, lead.email, lead.phone, lead.city, lead.county,
     lead.industry, lead.website, lead.status, lead.priority, lead.main_problem
   ].some(value => String(value || '').toLowerCase().includes(needle)));
+}
+
+function isReadyToSendLead(lead = {}) {
+  const blocked = ['Contactat', 'Nu mai contacta', 'Pierdut', 'Câștigat'];
+  return /\S+@\S+\.\S+/.test(String(lead.email || '')) && !blocked.includes(lead.status);
 }
 
 function leadRow(lead) {
