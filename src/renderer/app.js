@@ -1063,17 +1063,19 @@ function composeDefaultEmailBody(lead = {}, tone = 'warm', profile = null) {
   const services = suggestedServices(lead, activeProfile).slice(0, 2).map(item => `- ${item}`).join('\n');
   const differentiator = String(activeProfile.studioDifferentiators || '').split(/\n+/).map(item => item.trim()).filter(Boolean)[0] || 'Lucrăm clar, practic și orientat spre rezultat.';
   const signature = activeProfile.studioSignature || 'Cu drag,\nStudioData.ro';
-  const intro = tone === 'direct'
-    ? 'Vă scriu cu două observații concrete despre modul în care site-ul poate transmite mai clar ce oferiți.'
-    : 'Vă scriu pentru că am observat câteva lucruri simple care ar putea face site-ul mai clar pentru oamenii care îl vizitează.';
-  const close = tone === 'direct'
-    ? 'Dacă este relevant, vă pot trimite câteva recomandări ordonate, ca să vedeți ce ar merita ajustat prima dată.'
-    : 'Dacă vi se pare util, vă pot trimite câteva recomandări scurte, adaptate pentru firma dumneavoastră.';
-  return `${greeting}\n\n${companyLine}\n${intro}\n\nCe am observat:\n${bullets}\n\nUnde v-ar putea ajuta StudioData.ro:\n${services}\n\n${differentiator}\n\n${close}\n\nNu insist dacă nu este momentul potrivit.\n\n${signature}`;
+  if (tone === 'short') {
+    const observation = briefBullets(lead)[0] || 'site-ul poate fi făcut mai clar pentru vizitatori.';
+    return `${greeting}\n\n${companyLine}\nAm observat un lucru care ar putea fi util: ${observation.replace(/[.]+$/, '.').replace(/^./, c => c.toLowerCase())}\n\nDacă vi se pare relevant, vă pot trimite 2-3 recomandări scurte, fără obligații.\n\n${signature}`;
+  }
+  if (tone === 'followup') {
+    return `${greeting}\n\nRevin scurt în legătură cu mesajul despre prezența online a firmei ${lead.company || 'dumneavoastră'}.\n\nDacă website-ul este o prioritate în perioada următoare, vă pot trimite câteva recomandări simple despre ce ar merita ajustat prima dată.\n\nDacă nu este momentul potrivit, nu insist.\n\n${signature}`;
+  }
+  return `${greeting}\n\n${companyLine}\nVă scriu cu două observații concrete despre modul în care site-ul poate transmite mai clar ce oferiți.\n\nCe am observat:\n${bullets}\n\nUnde v-ar putea ajuta StudioData.ro:\n${services}\n\n${differentiator}\n\nDacă este relevant, vă pot trimite câteva recomandări ordonate, ca să vedeți ce ar merita ajustat prima dată.\n\nNu insist dacă nu este momentul potrivit.\n\n${signature}`;
 }
 
 async function showDirectEmail(lead = {}) {
   const profile = defaultStudioProfile(await api.getSettings());
+  const initialBody = composeDefaultEmailBody(lead, 'short', profile);
   const modal = document.createElement('div');
   modal.className = 'modal';
   modal.innerHTML = `<div class="panel">
@@ -1081,13 +1083,27 @@ async function showDirectEmail(lead = {}) {
     <p class="muted">Emailul va fi trimis prin setările SMTP salvate în Setări > Email direct.</p>
     <label>Către<input id="direct-email-to" value="${escAttr(lead.email || '')}"></label>
     <label>Subiect<input id="direct-email-subject" value="${escAttr(defaultEmailSubject(lead))}"></label>
-    <div class="toolbar"><button id="tone-warm" type="button">Ton cald</button><button id="tone-direct" type="button">Ton direct</button></div>
-    <label>Mesaj<textarea id="direct-email-body">${esc(composeDefaultEmailBody(lead, 'warm', profile))}</textarea></label>
+    <div class="toolbar email-variants">
+      <button class="secondary" data-email-tone="short" type="button">Scurt</button>
+      <button data-email-tone="professional" type="button">Profesional</button>
+      <button data-email-tone="followup" type="button">Follow-up</button>
+    </div>
+    <div id="email-health" class="email-health"></div>
+    <label>Mesaj<textarea id="direct-email-body">${esc(initialBody)}</textarea></label>
     <div class="toolbar"><button class="primary" id="send-direct-email">Trimite email</button><button id="close-direct-email">Închide</button></div>
   </div>`;
   document.body.appendChild(modal);
-  $('#tone-warm').onclick = () => { $('#direct-email-body').value = composeDefaultEmailBody(lead, 'warm', profile); };
-  $('#tone-direct').onclick = () => { $('#direct-email-body').value = composeDefaultEmailBody(lead, 'direct', profile); };
+  const refreshHealth = () => { $('#email-health').innerHTML = emailHealthView($('#direct-email-body').value); };
+  document.querySelectorAll('[data-email-tone]').forEach(button => {
+    button.onclick = () => {
+      document.querySelectorAll('[data-email-tone]').forEach(item => item.classList.remove('secondary'));
+      button.classList.add('secondary');
+      $('#direct-email-body').value = composeDefaultEmailBody(lead, button.dataset.emailTone, profile);
+      refreshHealth();
+    };
+  });
+  $('#direct-email-body').addEventListener('input', refreshHealth);
+  refreshHealth();
   $('#close-direct-email').onclick = () => modal.remove();
   $('#send-direct-email').onclick = async () => {
     const button = $('#send-direct-email');
@@ -1115,6 +1131,32 @@ async function showDirectEmail(lead = {}) {
       button.textContent = 'Trimite email';
     }
   };
+}
+
+function emailHealthView(body = '') {
+  const report = emailRiskReport(body);
+  return `<div class="email-health-card ${report.level}">
+    <strong>${esc(report.label)}</strong>
+    <span>${esc(report.summary)}</span>
+  </div>`;
+}
+
+function emailRiskReport(body = '') {
+  const text = String(body || '');
+  const lower = text.toLowerCase();
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const bulletCount = (text.match(/^\s*[-•]/gm) || []).length;
+  const riskyWords = ['ofertă', 'costuri', 'promoție', 'urgent', 'garanție', 'gratuit', 'cumpărați', 'reducere'];
+  const hits = riskyWords.filter(word => lower.includes(word));
+  let score = 0;
+  if (words > 170) score += 2;
+  else if (words > 120) score += 1;
+  if (bulletCount > 3) score += 1;
+  if (hits.length) score += Math.min(2, hits.length);
+  if (text.includes('http://') || text.includes('https://')) score += 1;
+  if (score >= 3) return { level: 'high', label: 'Risc spam mai mare', summary: 'Încearcă varianta scurtă sau redu cuvintele comerciale.' };
+  if (score >= 1) return { level: 'medium', label: 'Risc spam moderat', summary: 'Mesajul e ok, dar poate fi scurtat puțin.' };
+  return { level: 'low', label: 'Risc spam scăzut', summary: `Mesaj scurt și natural: ${words} cuvinte.` };
 }
 
 function emailSendResultText(result = {}) {

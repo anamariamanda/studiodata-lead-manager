@@ -467,6 +467,39 @@ tbody tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent
   backdrop-filter: blur(6px);
 }
 .modal > div { max-width: 760px; width: 100%; max-height: 88vh; overflow: auto; }
+.email-variants button {
+  min-width: 104px;
+}
+.email-health {
+  margin: 8px 0 2px;
+}
+.email-health-card {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.email-health-card strong {
+  font-size: 13px;
+}
+.email-health-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.email-health-card.low {
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--panel));
+}
+.email-health-card.medium {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--line));
+  background: color-mix(in srgb, var(--warning) 12%, var(--panel));
+}
+.email-health-card.high {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+}
 .check-row { grid-template-columns: 28px 1fr 1fr; align-items: center; }
 .print-only { display: none; }
 .offers-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 14px; }
