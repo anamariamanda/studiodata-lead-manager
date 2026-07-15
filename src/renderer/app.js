@@ -503,28 +503,43 @@ async function renderLeadForm(id) {
   const lead = id ? await api.getLead(id) : blankLead();
   currentLead = lead;
   app.innerHTML = `
-    <div class="grid">
-    <form id="lead-form" class="grid">
-      <section class="panel">
+    <div class="lead-editor grid">
+    <form id="lead-form" class="grid lead-form">
+      <section class="panel lead-hero">
         <div class="section-heading">
           <div>
             <h2>Lead pe scurt</h2>
-            <p class="muted">Completează doar ce ai acum. Restul poate veni mai târziu sau din audit.</p>
+            <p class="muted">Completează doar datele pe care le ai acum. Poți salva și reveni mai târziu.</p>
           </div>
-          <button type="button" id="audit-current-website">Auditează website</button>
+          <div class="toolbar">
+            <button type="button" id="audit-current-website">Auditează website</button>
+            <button class="primary" type="submit">Salvează lead</button>
+          </div>
         </div>
-        <div class="grid three">${basicLeadFields(lead)}</div>
+        <div class="lead-form-section">
+          <h3>Date esențiale</h3>
+          <p class="muted">Firma și măcar o metodă de contact sunt suficiente pentru început.</p>
+          <div class="grid three">${essentialLeadFields(lead)}</div>
+        </div>
+        <div class="lead-form-section">
+          <h3>Următorul pas</h3>
+          <p class="muted">Alege ce trebuie făcut mai departe, fără să încarci lead-ul cu detalii inutile.</p>
+          <div class="grid four">${nextStepLeadFields(lead)}</div>
+        </div>
       </section>
       <details class="panel">
-        <summary>Detalii opționale</summary>
-        <div class="grid three details-content">${optionalLeadFields(lead)}</div>
+        <summary>Context opțional</summary>
+        <div class="details-content">
+          <p class="muted">Pentru informații utile, dar care nu sunt obligatorii la primul contact.</p>
+          <div class="grid three">${optionalLeadFields(lead)}</div>
+        </div>
       </details>
       <details class="panel">
         <summary>Audit website <span id="score" class="score">${score(lead.analysis_json)}</span>/100 · <span id="score-label">${scoreLabel(score(lead.analysis_json))}</span></summary>
         <p class="muted">Checklist-ul se poate completa automat cu „Auditează website”. Îl poți ajusta manual dacă ai nevoie.</p>
         <div class="grid details-content">${analysisFields(lead.analysis_json)}</div>
       </details>
-      <div class="toolbar"><button class="primary" type="submit">Salvează lead</button>${id ? `<button type="button" id="export-lead">Export PDF lead</button><button type="button" id="export-analysis">Export PDF analiză</button>` : ''}</div>
+      <div class="toolbar bottom-actions">${id ? `<button type="button" id="export-lead">Export PDF lead</button><button type="button" id="export-analysis">Export PDF analiză</button>` : ''}</div>
     </form>
     <details class="panel" ${id ? 'open' : ''}><summary>Activități și notițe de contact</summary><div id="activities" class="details-content">${activityList(lead.activities || [])}</div>${id ? activityForm(id) : '<p class="muted">Salvează lead-ul înainte de a adăuga activități.</p>'}</details>
     </div>`;
@@ -536,12 +551,19 @@ async function renderLeadForm(id) {
   $('#export-analysis')?.addEventListener('click', () => api.exportAnalysisPdf(id));
 }
 
-function basicLeadFields(lead) {
+function essentialLeadFields(lead) {
   const fields = [
     ['company', 'Firma*'], ['contact_person', 'Persoană de contact'], ['phone', 'Telefon'],
     ['email', 'Email', 'email'], ['website', 'Website'], ['city', 'Oraș'],
+    ['notes', 'Observații simple', 'textarea']
+  ];
+  return fields.map(([name, label, type = 'text', options]) => field(name, label, lead[name], type, options)).join('');
+}
+
+function nextStepLeadFields(lead) {
+  const fields = [
     ['status', 'Status', 'select', STATUSES], ['priority', 'Prioritate', 'select', PRIORITIES],
-    ['next_followup_date', 'Următorul follow-up', 'date'], ['notes', 'Observații simple', 'textarea']
+    ['next_followup_date', 'Follow-up', 'date'], ['next_followup_time', 'Ora', 'time']
   ];
   return fields.map(([name, label, type = 'text', options]) => field(name, label, lead[name], type, options)).join('');
 }
@@ -552,7 +574,7 @@ function optionalLeadFields(lead) {
     ['contact_role', 'Funcția contactului'], ['facebook', 'Facebook'], ['linkedin', 'LinkedIn'],
     ['source', 'Sursa lead-ului', 'select', SOURCES], ['main_problem', 'Observație principală'], ['other_problems', 'Brief / alte observații', 'textarea'],
     ['recommended_service', 'Serviciu recomandat'], ['estimated_budget', 'Buget estimat'],
-    ['last_contact_date', 'Data ultimei contactări', 'date'], ['next_followup_time', 'Ora follow-up', 'time']
+    ['last_contact_date', 'Data ultimei contactări', 'date']
   ];
   return fields.map(([name, label, type = 'text', options]) => field(name, label, lead[name], type, options)).join('');
 }
