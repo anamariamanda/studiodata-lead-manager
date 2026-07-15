@@ -1181,11 +1181,13 @@ function composeDefaultEmailBody(lead = {}, tone = 'warm', profile = null) {
 async function showDirectEmail(lead = {}) {
   const profile = defaultStudioProfile(await api.getSettings());
   const initialBody = composeDefaultEmailBody(lead, 'short', profile);
+  const canSend = Boolean(String(lead.email || '').trim());
   const modal = document.createElement('div');
   modal.className = 'modal';
   modal.innerHTML = `<div class="panel">
     <h2>Trimite email direct</h2>
     <p class="muted">Emailul va fi trimis prin setările SMTP salvate în Setări > Email direct.</p>
+    ${canSend ? '' : '<div class="email-warning">Adaugă o adresă de email înainte de trimitere.</div>'}
     <label>Către<input id="direct-email-to" value="${escAttr(lead.email || '')}"></label>
     <label>Subiect<input id="direct-email-subject" value="${escAttr(defaultEmailSubject(lead))}"></label>
     <div class="toolbar email-variants">
@@ -1212,19 +1214,24 @@ async function showDirectEmail(lead = {}) {
   $('#close-direct-email').onclick = () => modal.remove();
   $('#send-direct-email').onclick = async () => {
     const button = $('#send-direct-email');
+    const recipient = $('#direct-email-to').value.trim();
+    const subject = $('#direct-email-subject').value.trim();
+    if (!recipient || !recipient.includes('@')) return showErrorModal('Verifică destinatarul', 'Completează o adresă de email validă înainte de trimitere.');
+    if (!subject) return showErrorModal('Verifică subiectul', 'Completează subiectul emailului înainte de trimitere.');
     button.disabled = true;
     button.textContent = 'Se trimite...';
     try {
       const sendResult = await api.sendEmail({
-        to: $('#direct-email-to').value,
-        subject: $('#direct-email-subject').value,
+        to: recipient,
+        subject,
         body: $('#direct-email-body').value
       });
+      await markLeadAfterEmail(lead.id);
       await api.addActivity({
         lead_id: lead.id,
         type: 'email trimis',
         date: new Date().toISOString().slice(0, 10),
-        description: $('#direct-email-subject').value,
+        description: subject,
         result: emailSendResultText(sendResult)
       });
       toast('Email trimis.');
@@ -1236,6 +1243,21 @@ async function showDirectEmail(lead = {}) {
       button.textContent = 'Trimite email';
     }
   };
+}
+
+async function markLeadAfterEmail(id) {
+  if (!id) return;
+  const lead = await api.getLead(id);
+  if (!lead) return;
+  const today = new Date();
+  lead.status = 'Contactat';
+  lead.last_contact_date = today.toISOString().slice(0, 10);
+  if (!lead.next_followup_date) {
+    const followup = new Date(today);
+    followup.setDate(followup.getDate() + 3);
+    lead.next_followup_date = followup.toISOString().slice(0, 10);
+  }
+  await api.saveLead(lead);
 }
 
 function emailHealthView(body = '') {

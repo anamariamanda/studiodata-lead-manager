@@ -684,6 +684,14 @@ tbody tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent
 .email-health {
   margin: 8px 0 2px;
 }
+.email-warning {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warning) 12%, var(--panel));
+  color: var(--text);
+  font-size: 13px;
+}
 .email-health-card {
   display: grid;
   gap: 2px;
