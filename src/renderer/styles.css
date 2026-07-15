@@ -220,9 +220,41 @@ details.panel[open] summary::after { content: "Închide"; }
   display: none;
 }
 .focus-panel { margin-top: 14px; }
+.today-panel {
+  overflow: hidden;
+}
+.daily-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: 12px;
+}
+.action-bucket {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 190px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--panel-2) 58%, var(--panel));
+}
+.action-bucket > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.action-bucket strong {
+  font-size: 14px;
+}
+.action-bucket span {
+  color: var(--muted);
+  font-size: 12px;
+}
 .focus-list {
   display: grid;
   gap: 8px;
+}
+.focus-list.compact {
+  gap: 6px;
 }
 .focus-item {
   display: flex;
@@ -234,11 +266,24 @@ details.panel[open] summary::after { content: "Închide"; }
   border-radius: var(--radius);
   background: var(--panel-2);
 }
+.focus-list.compact .focus-item {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+.focus-list.compact .focus-item button {
+  min-height: 30px;
+  padding: 6px 9px;
+}
 .focus-item span {
   display: block;
   color: var(--muted);
   font-size: 13px;
   margin-top: 2px;
+}
+.empty.small {
+  padding: 12px;
+  font-size: 12px;
 }
 .import-drop {
   display: grid;
@@ -556,6 +601,7 @@ tbody tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent
   nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar { height: auto; align-items: flex-start; gap: 12px; flex-direction: column; }
   .cards, .two, .three, .four { grid-template-columns: 1fr; }
+  .daily-actions { grid-template-columns: 1fr; }
   .scraper-form { grid-template-columns: 1fr; }
   .offers-layout { grid-template-columns: 1fr; }
   .offer-item-row { grid-template-columns: 1fr 1fr; }

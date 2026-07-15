@@ -377,28 +377,42 @@ function showScrapedLeadModal(lead) {
 }
 
 async function renderDashboard() {
-  const data = await api.dashboard();
+  const [data, leads] = await Promise.all([api.dashboard(), api.listLeads({ sortBy: 'created_at', sortDir: 'desc' })]);
   const notices = [];
   if (data.todayFollowups.length) notices.push(`${data.todayFollowups.length} follow-up-uri programate astăzi`);
   if (data.overdueFollowups.length) notices.push(`${data.overdueFollowups.length} follow-up-uri restante`);
   setNotice(notices.join(' • '));
   if (notices.length) api.notify(notices.join('. '));
+  const contactedIds = new Set((data.recentActivities || []).filter(activity => activity.type === 'email trimis').map(activity => activity.lead_id));
+  const readyForEmail = leads
+    .filter(lead => lead.email && Number(lead.analysis_score || 0) > 0 && !contactedIds.has(lead.id) && !['Contactat', 'Nu mai contacta', 'Pierdut', 'Câștigat'].includes(lead.status))
+    .slice(0, 5);
+  const missingData = leads
+    .filter(lead => !lead.email || !lead.phone || !lead.website)
+    .slice(0, 5);
+  const warmLeads = leads
+    .filter(lead => ['Răspuns primit', 'Interesat', 'Întâlnire programată', 'Ofertă trimisă', 'Negociere'].includes(lead.status))
+    .slice(0, 5);
   const cards = [
     ['Total lead-uri', data.cards.total], ['Noi', data.cards.new], ['De analizat', data.cards.toAnalyze], ['Contactate', data.cards.contacted],
     ['Follow-up necesar', data.cards.followupNeeded], ['Interesate', data.cards.interested], ['Oferte trimise', data.cards.offers], ['Câștigate', data.cards.won]
   ];
   app.innerHTML = `
     <div class="grid cards">${cards.map(([label, value]) => `<div class="card metric"><strong>${value}</strong><span>${label}</span></div>`).join('')}</div>
-    <section class="panel focus-panel">
+    <section class="panel focus-panel today-panel">
       <div class="section-heading">
         <div>
-          <h2>Azi de contactat</h2>
-          <p class="muted">Lead-urile care merită atenție înainte să intri în lista completă.</p>
+          <h2>Ce fac azi?</h2>
+          <p class="muted">Cele mai utile acțiuni înainte să intri în lista completă.</p>
         </div>
         <button data-page-jump="leads">Vezi toate lead-urile</button>
       </div>
-      <div class="focus-list">
-        ${[...data.overdueFollowups, ...data.todayFollowups].slice(0, 6).map(focusLead).join('') || '<div class="empty">Nu ai follow-up-uri presante pentru azi.</div>'}
+      <div class="daily-actions">
+        ${actionBucket('Restante', data.overdueFollowups.slice(0, 4), 'Follow-up-uri trecute de termen.')}
+        ${actionBucket('De contactat azi', data.todayFollowups.slice(0, 4), 'Lead-uri programate pentru astăzi.')}
+        ${actionBucket('Gata de email', readyForEmail, 'Au audit și adresă de email.')}
+        ${actionBucket('Lipsesc date', missingData, 'Merită completate înainte de contact.')}
+        ${actionBucket('Oportunități calde', warmLeads, 'Au semnale de interes sau ofertă.')}
       </div>
     </section>
     <div class="grid two" style="margin-top:14px">
@@ -410,6 +424,15 @@ async function renderDashboard() {
     </div>`;
   bindLeadLinks();
   document.querySelectorAll('[data-page-jump]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.pageJump)));
+}
+
+function actionBucket(title, leads, hint) {
+  return `<div class="action-bucket">
+    <div><strong>${esc(title)}</strong><span>${esc(hint)}</span></div>
+    <div class="focus-list compact">
+      ${leads.length ? leads.map(focusLead).join('') : '<div class="empty small">Nimic urgent.</div>'}
+    </div>
+  </div>`;
 }
 
 function focusLead(lead) {
