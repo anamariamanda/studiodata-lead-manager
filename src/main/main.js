@@ -100,14 +100,16 @@ async function sendDirectEmail(message = {}) {
   const replyTo = String(settings.ownEmail || settings.emailReplyTo || 'contact@studiodata.ro').trim();
   const fromEmail = String(settings.emailFromEmail || 'contact@studiodata.ro').trim();
   const smtpUser = String(settings.emailUser || fromEmail).trim();
+  const signatureAttachment = emailSignatureAttachment();
   const info = await transporter.sendMail({
     from: `"${settings.emailFromName || 'StudioData.ro'}" <${fromEmail}>`,
     sender: smtpUser && smtpUser.toLowerCase() !== fromEmail.toLowerCase() ? smtpUser : undefined,
     to,
     subject: String(message.subject || 'Mesaj StudioData'),
-    text: String(message.body || ''),
-    html: textToEmailHtml(String(message.body || '')),
-    replyTo: replyTo || fromEmail
+    text: textWithSignature(String(message.body || ''), settings),
+    html: textToEmailHtml(String(message.body || ''), settings, signatureAttachment ? signatureAttachment.cid : ''),
+    replyTo: replyTo || fromEmail,
+    attachments: signatureAttachment ? [signatureAttachment] : []
   });
   return {
     sent: true,
@@ -118,11 +120,62 @@ async function sendDirectEmail(message = {}) {
   };
 }
 
-function textToEmailHtml(text = '') {
+function textWithSignature(text = '', settings = {}) {
+  const signature = [
+    '',
+    '--',
+    settings.emailFromName || settings.businessName || 'StudioData.ro',
+    'Website-uri moderne. Design. Performanță.',
+    settings.ownWebsite || 'https://studiodata.ro',
+    settings.ownEmail || settings.emailFromEmail || 'contact@studiodata.ro',
+    settings.ownPhone || ''
+  ].filter(Boolean).join('\n');
+  return `${String(text || '').trim()}\n${signature}`;
+}
+
+function textToEmailHtml(text = '', settings = {}, logoCid = '') {
   const safe = String(text)
     .replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]))
     .replace(/\n/g, '<br>');
-  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.55;color:#172033">${safe}</div>`;
+  return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.55;color:#172033">
+    <div>${safe}</div>
+    ${emailSignatureHtml(settings, logoCid)}
+  </div>`;
+}
+
+function emailSignatureHtml(settings = {}, logoCid = '') {
+  const website = escapeHtml(settings.ownWebsite || 'https://studiodata.ro');
+  const email = escapeHtml(settings.ownEmail || settings.emailFromEmail || 'contact@studiodata.ro');
+  const phone = escapeHtml(settings.ownPhone || '');
+  const logo = logoCid ? `<img src="cid:${logoCid}" alt="StudioData" width="188" style="display:block;width:188px;max-width:100%;height:auto;margin:0 0 8px 0;">` : '<strong style="display:block;color:#37517e;font-size:18px;margin-bottom:4px;">StudioData.ro</strong>';
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;border-top:1px solid #dce3ea;padding-top:14px;width:100%;max-width:520px;">
+    <tr>
+      <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#172033;font-size:13px;line-height:1.45;">
+        ${logo}
+        <div style="color:#37517e;font-weight:600;margin-bottom:4px;">Website-uri moderne. Design. Performanță.</div>
+        <div style="color:#6c7482;">${email}${phone ? ` · ${phone}` : ''}</div>
+        <div><a href="${website}" style="color:#1b6f95;text-decoration:none;">${website.replace(/^https?:\/\//, '')}</a></div>
+      </td>
+    </tr>
+  </table>`;
+}
+
+function emailSignatureAttachment() {
+  const logoPath = path.join(__dirname, '../renderer/assets/studiodata-logo-email.svg');
+  try {
+    return {
+      filename: 'studiodata-logo.svg',
+      content: fs.readFileSync(logoPath),
+      contentType: 'image/svg+xml',
+      cid: 'studiodata-logo'
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
 
 function createEmailTransporter() {

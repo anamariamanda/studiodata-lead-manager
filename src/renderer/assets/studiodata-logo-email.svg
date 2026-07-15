@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 120" role="img" aria-labelledby="title">
+  <title id="title">StudioData</title>
+  <g fill="none" stroke="#47b2e4" stroke-linecap="round" stroke-linejoin="round" stroke-width="9">
+    <path d="M55 38 22 60l33 22"/>
+    <path d="M95 38 128 60 95 82"/>
+  </g>
+  <text x="145" y="72" font-family="Jost, Poppins, Arial, sans-serif" font-size="58" font-weight="500"><tspan fill="#37517e">Studio</tspan><tspan fill="#47b2e4">Data</tspan></text>
+  <line x1="148" y1="91" x2="291" y2="91" stroke="#47b2e4" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="306" cy="91" r="5" fill="#47b2e4"/>
+</svg>
