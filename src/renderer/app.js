@@ -1162,7 +1162,7 @@ function field(name, label, value = '', type = 'text', options = []) {
 }
 
 function applyTemplate(text, lead = {}) {
-  const vars = { firma: lead.company, persoana_contact: lead.contact_person, website: lead.website, oras: lead.city, problema: lead.main_problem, serviciu: lead.recommended_service, scor_website: lead.analysis_score, brief_site: lead.other_problems || lead.notes };
+  const vars = { firma: lead.company, persoana_contact: lead.contact_person, website: lead.website, oras: lead.city, problema: clientFacingProblem(lead), serviciu: lead.recommended_service, scor_website: lead.analysis_score, brief_site: briefBullets(lead).join('\n') };
   return String(text).replace(/\{(\w+)\}/g, (_, key) => vars[key] || '');
 }
 
@@ -1186,17 +1186,39 @@ function composePlainEmail(lead = {}, body = '') {
 }
 
 function briefBullets(lead = {}) {
-  const source = String(lead.other_problems || lead.notes || lead.main_problem || '')
+  const writtenObservations = String(lead.other_problems || '')
     .split(/\n+/)
     .map(line => line.replace(/^[-•\s]+/, '').trim())
-    .filter(line => line && !/^Brief pentru/i.test(line) && !/^Audit automat/i.test(line) && !/^Scor estimat/i.test(line))
-    .slice(0, 3);
-  if (source.length) return source;
+    .filter(isClientFacingObservation);
+  if (writtenObservations.length) return writtenObservations.slice(0, 3);
+
+  const analysis = lead.analysis_json || {};
+  const opportunities = [];
+  const addIfMissing = (key, text) => { if (analysis[key] && !analysis[key].checked) opportunities.push(text); };
+  addIfMissing('website-ul se afișează bine pe mobil', 'experiența pe telefon poate fi îmbunătățită, astfel încât informațiile și contactul să fie mai ușor de accesat');
+  addIfMissing('există buton clar de contact', 'lipsește un îndemn clar către apel, mesaj sau cerere de ofertă');
+  addIfMissing('există recenzii sau testimoniale', 'recenziile și exemplele de proiecte ar putea susține mai bine încrederea vizitatorilor');
+  addIfMissing('textele sunt clare', 'serviciile și beneficiile pot fi prezentate mai clar, pentru a fi înțelese rapid');
+  addIfMissing('există apeluri clare la acțiune', 'parcursul vizitatorului poate fi orientat mai bine către o acțiune concretă');
+  addIfMissing('website-ul se încarcă rapid', 'viteza de încărcare merită optimizată pentru a reduce abandonul vizitatorilor');
+  if (opportunities.length) return opportunities.slice(0, 3);
+
+  const mainProblem = clientFacingProblem(lead);
+  if (mainProblem) return [mainProblem];
   const fallback = [];
-  if (Number(lead.analysis_score || 0) > 0) fallback.push(`Scorul auditului rapid este ${lead.analysis_score}/100, deci există loc pentru câteva îmbunătățiri vizibile.`);
-  if (lead.website) fallback.push('Website-ul poate fi analizat mai atent pentru claritate, încredere și contact mai ușor.');
-  fallback.push('Putem identifica rapid ce ar merita ajustat ca vizitatorii să înțeleagă mai bine oferta și să ceară mai ușor detalii.');
+  if (lead.website) fallback.push('structura și mesajul website-ului pot fi evaluate pentru mai multă claritate, încredere și contact mai ușor');
+  fallback.push('prezența online poate fi organizată astfel încât vizitatorii să înțeleagă mai repede oferta și următorul pas');
   return fallback.slice(0, 3);
+}
+
+function isClientFacingObservation(line = '') {
+  if (!line) return false;
+  return !/^(brief pentru|audit automat|scor estimat|importat|linie originală|emailuri găsite|telefoane găsite|sursa|source|lead importat|necesită verificare|contact găsit)/i.test(line);
+}
+
+function clientFacingProblem(lead = {}) {
+  const value = String(lead.main_problem || '').trim();
+  return isClientFacingObservation(value) ? value : '';
 }
 
 function suggestedServices(lead = {}, profile = {}) {
@@ -1227,7 +1249,7 @@ function composeDefaultEmailBody(lead = {}, tone = 'warm', profile = null) {
   if (tone === 'followup') {
     return `${greeting}\n\nRevin scurt în legătură cu mesajul despre prezența online a firmei ${lead.company || 'dumneavoastră'}.\n\nDacă website-ul este o prioritate în perioada următoare, vă pot trimite câteva recomandări simple despre ce ar merita ajustat prima dată.\n\nDacă nu este momentul potrivit, nu insist.\n\n${signature}`;
   }
-  return `${greeting}\n\n${companyLine}\nVă scriu cu două observații concrete despre modul în care site-ul poate transmite mai clar ce oferiți.\n\nCe am observat:\n${bullets}\n\nUnde v-ar putea ajuta StudioData.ro:\n${services}\n\n${differentiator}\n\nDacă este relevant, vă pot trimite câteva recomandări ordonate, ca să vedeți ce ar merita ajustat prima dată.\n\nNu insist dacă nu este momentul potrivit.\n\n${signature}`;
+  return `${greeting}\n\n${companyLine}\n\nÎnainte de a vă scrie, am analizat modul în care este prezentată activitatea companiei și cât de ușor poate un vizitator să înțeleagă serviciile, să capete încredere și să facă următorul pas.\n\nAm identificat câteva direcții care merită luate în calcul:\n${bullets}\n\nStudioData.ro poate transforma aceste observații într-o structură mai clară și mai convingătoare prin:\n${services}\n\n${differentiator} Scopul nu este doar o schimbare vizuală, ci un website care explică mai bine valoarea companiei și facilitează contactarea.\n\nDacă subiectul este de interes, vă pot trimite o propunere concisă, cu etapele recomandate, termenul estimat și investiția necesară.\n\n${signature}`;
 }
 
 async function showDirectEmail(lead = {}) {
